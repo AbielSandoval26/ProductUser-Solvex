@@ -1,5 +1,5 @@
 
--- Creación de la base de datos
+-- CreaciÃ³n de la base de datos
 CREATE DATABASE Solvex;
 GO
 
@@ -41,15 +41,6 @@ CREATE TABLE ProductVariation(
 );
 GO
 
--- Inserción de roles base
-INSERT INTO Users(Nombre, Email, PasswordHash, Rol)
-VALUES 
-('Administrador', 'admin@domain.com', '12345678', 'Admin'),
-('Vendedor', 'seller@domain.com', '1234', 'Seller'),
-('Usuario', 'user@domain.com', '123', 'User');
-GO
-
-
 CREATE PROCEDURE sp_InsertarUsuario
     @Nombre NVARCHAR(100),
     @Email NVARCHAR(255),
@@ -59,7 +50,7 @@ AS
 BEGIN
     IF @Rol NOT IN ('Admin', 'Seller', 'User')
     BEGIN
-        RAISERROR ('El rol no es válido.', 16, 1);
+        RAISERROR ('El rol no es vÃ¡lido.', 16, 1);
         RETURN;
     END
 

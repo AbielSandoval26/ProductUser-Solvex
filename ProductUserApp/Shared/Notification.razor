@@ -1,0 +1,43 @@
+﻿
+
+
+
+@using ProductUserApp.Services.Interfaces
+<div class="notifications">
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <div class="alert alert-@Type">@Message</div>
+    }
+</div>
+
+@code {
+    [Inject] private INotificationService NotificationService { get; set; } = default!;
+
+    private string? Message;
+    private string Type = "info";
+
+    protected override void OnInitialized()
+    {
+        NotificationService.OnShow += ShowNotification;
+    }
+
+    private void ShowNotification(string type, string message)
+    {
+        Type = type;
+        Message = message;
+
+        InvokeAsync(async () =>
+        {
+            await Task.Delay(3000);
+            Message = null;
+            StateHasChanged();
+        });
+
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NotificationService.OnShow -= ShowNotification;
+    }
+}

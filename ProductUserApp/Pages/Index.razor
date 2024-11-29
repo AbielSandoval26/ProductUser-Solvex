@@ -1,0 +1,29 @@
+﻿@page "/"
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using ProductUserApp.Services.Interfaces
+@inject NavigationManager Navigation
+@inject ITokenService TokenService
+
+
+
+<AuthorizeView>
+    <Authorized>
+        <ProductUserApp.Pages.Products.Products />
+        <ProductUserApp.Pages.Users.Users/>
+    </Authorized>
+    <NotAuthorized>
+        <p>Por favor, inicie sesión.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var token = await TokenService.GetTokenAsync();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+    }
+}

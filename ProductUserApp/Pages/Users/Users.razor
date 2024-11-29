@@ -1,0 +1,200 @@
+﻿@page "/users"
+@using Microsoft.AspNetCore.Components.Authorization
+@using ProductUserApp.Models
+@using ProductUserApp.Services.Interfaces
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@inject INotificationService NotificationService
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Gestión de Usuarios</h3>
+
+@if (users == null)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    @if (isAdminOrSeller)
+    {
+        <button class="btn btn-primary mb-3" @onclick="AddNewUser">Agregar Nuevo Usuario</button>
+    }
+
+    <EditForm Model="users" OnValidSubmit="SaveChanges">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    @if (isAdminOrSeller)
+                    {
+                        <th>Contraseña</th>
+                        <th>Acciones</th>
+
+                    }
+
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in users)
+                {
+                    <tr>
+                        <td>
+                            <InputText class="form-control" @bind-Value="user.Nombre" Disabled="@IsRoleRestricted(user)" @oninput="() => MarkAsModified(user)" />
+                        </td>
+
+                        <td>
+                            <InputText class="form-control" @bind-Value="user.Email" Disabled="@IsRoleRestricted(user)" @oninput="() => MarkAsModified(user)" />
+                        </td>
+                        <td>
+                            <InputSelect class="form-control" @bind-Value="user.Rol" Disabled="@IsRoleRestricted(user)" @oninput="() => MarkAsModified(user)">
+                                @foreach (var role in GetAvailableRoles(user.Rol))
+                                {
+                                    <option value="@role">@role</option>
+                                }
+                            </InputSelect>
+                        </td>
+                        @if (isAdminOrSeller)
+                        {
+                            <td>
+                                <InputText class="form-control" @bind-Value="user.PasswordHash" Disabled="@(!user.IsPasswordEditable)" @oninput="() => MarkAsModified(user)" />
+                            </td>
+                        }
+                        <td>
+                            @if (isAdmin)
+                            {
+                                <div class="d-flex">
+                                    <button class="btn btn-warning me-2" type="button" @onclick="() => ChangePassword(user)">Editar Contraseña</button>
+                                    <button class="btn btn-danger" type="button" @onclick="() => DeleteUser(user.Id)">Eliminar</button>
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+
+        </table>
+
+        <div class="mt-3">
+            @if (isAdminOrSeller)
+            {
+                <button class="btn btn-success" type="submit">Guardar Cambios</button>
+            }
+        </div>
+    </EditForm>
+}
+
+@code {
+    private List<User> users = new();
+    private string currentUserRole;
+
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUserRole = await AuthService.GetCurrentUserRoleAsync();
+
+        await LoadUsers();
+    }
+
+    private bool isAdmin => currentUserRole == "Admin";
+    private bool isAdminOrSeller => isAdmin || currentUserRole == "Seller";
+
+    private async Task LoadUsers()
+    {
+        users = (await UserService.GetUsersAsync()).ToList();
+    }
+
+    private void AddNewUser()
+    {
+        users.Add(new User { Rol = "User", IsPasswordEditable = true}); 
+    }
+
+    private async Task SaveChanges()
+    {
+        var modifiedUsers = users.Where(u => u.IsModified).ToList();
+
+        foreach (var user in modifiedUsers)
+        {
+            if (user.Id == 0)
+            {
+                await UserService.CreateUserAsync(user);
+                NotificationService.ShowSuccess($"Usuario {user.Email} creado con éxito.");
+            }
+            else 
+            {
+                user.PasswordHash = string.IsNullOrWhiteSpace(user.PasswordHash) ? null : user.PasswordHash;
+                await UserService.UpdateUserAsync(user);
+                NotificationService.ShowSuccess($"Usuario {user.Email} actualizado con éxito.");
+            }
+
+            user.IsModified = false;
+        }
+
+        await LoadUsers();
+    }
+
+
+    private async Task DeleteUser(int id)
+    {
+        try
+        {
+            await UserService.DeleteUserAsync(id);
+            users = users.Where(u => u.Id != id).ToList();
+            NotificationService.ShowSuccess("Usuario eliminado con éxito.");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError("Error al eliminar usuario.");
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private bool IsRoleRestricted(User user)
+    {
+        if (currentUserRole == "User")
+            return true;
+
+        return currentUserRole == "Seller" && user.Rol == "Admin";
+    }
+
+    private IEnumerable<string> GetAvailableRoles(string currentRole)
+    {
+        List<string> roles = new();
+
+        if (currentUserRole == "Admin")
+        {
+            roles.AddRange(new[] { "Admin", "Seller", "User" });
+        }
+        else if (currentUserRole == "Seller")
+        {
+            roles.AddRange(new[] { "Seller", "User" });
+        }
+
+        roles.Remove(currentRole); 
+        roles.Insert(0, currentRole); 
+
+        return roles;
+    }
+
+    private void ChangePassword(User user)
+    {
+        user.IsPasswordEditable = true;
+        NotificationService.ShowInfo($"El campo de contraseña para {user.Email} está habilitado.");
+    }
+
+    private void MarkAsModified(User user)
+    {
+        user.IsModified = true;
+    }
+
+   
+
+
+}

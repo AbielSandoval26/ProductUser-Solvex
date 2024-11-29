@@ -1,0 +1,50 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using ProductUserApp.Services.Interfaces
+@inject IAuthService authService
+@inject AuthenticationStateProvider authStateProvider
+@inject NavigationManager navigationManager
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        @if (!IsLoginPage())
+        {
+            <NavMenu />
+        }
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            @if (!IsLoginPage())
+            {
+                <button @onclick="HandleLogout">Logout</button>
+            }
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private bool isUserAuthenticated = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isUserAuthenticated = user.Identity.IsAuthenticated;
+    }
+
+    private async Task HandleLogout()
+    {
+        await authService.LogoutAsync();
+        navigationManager.NavigateTo("/login"); 
+    }
+
+    private bool IsLoginPage()
+    {
+        return navigationManager.Uri.Contains("/login", StringComparison.OrdinalIgnoreCase);
+    }
+}

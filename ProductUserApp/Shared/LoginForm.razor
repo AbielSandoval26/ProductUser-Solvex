@@ -1,0 +1,47 @@
+﻿@page "/login"
+
+@using ProductUserApp.Models
+@using ProductUserApp.Services.Authentication
+@using ProductUserApp.Services.Interfaces
+@inject IUserService UserService
+@inject ITokenService tokenService
+@inject NavigationManager NavigationManager
+
+<h3>Login</h3>
+<EditForm Model="@loginModel" OnValidSubmit="HandleLogin" class="container mt-4">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger mb-3" />
+    <div class="mb-3 row">
+        <label for="email" class="col-sm-2 col-form-label">Email:</label>
+        <div class="col-sm-10">
+            <InputText id="email" @bind-Value="loginModel.Email" class="form-control" />
+        </div>
+    </div>
+    <div class="mb-3 row">
+        <label for="password" class="col-sm-2 col-form-label">Password:</label>
+        <div class="col-sm-10">
+            <InputText id="password" @bind-Value="loginModel.Password" Type="password" class="form-control" />
+        </div>
+    </div>
+    <div class="text-end">
+        <button type="submit" class="btn btn-primary">Acceder</button>
+    </div>
+</EditForm>
+
+
+@code {
+    private LoginModel loginModel = new();
+
+    private async Task HandleLogin()
+    {
+        var user = await UserService.AuthenticateAsync(loginModel.Email, loginModel.Password);
+        if (user != null)
+        {
+            await tokenService.SaveTokenAsync(user.Token);
+            NavigationManager.NavigateTo("/products");
+        }
+       
+    }
+
+   
+}

@@ -1,0 +1,105 @@
+﻿@page "/products"
+@attribute [Authorize]
+
+
+@using Microsoft.AspNetCore.Authorization
+@using ProductUserApp.DTO
+@using ProductUserApp.Models
+@using ProductUserApp.Services.Interfaces
+@inject NavigationManager Navigation
+@inject IProductService ProductService
+@inject IAuthService AuthService
+
+
+<h3>Gestión de Productos</h3>
+
+@if (productList == null)
+{
+    <p>Cargando productos...</p>
+}
+else
+{
+    if (canEditAndCreateProduct)
+    {
+        <div class="d-flex justify-content-end mt-3">
+            <button class="btn btn-success mb-3" @onclick="CreateProduct">Crear Producto</button>
+        </div>
+    }
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Imagen</th>
+                <th>Variaciones</th>
+                @if (canEditAndCreateProduct)
+                {
+                    <th>Acciones</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in productList)
+            {
+                <tr>
+                    <td>@product.Nombre</td>
+                    <td>@product.Descripcion</td>
+                    <td><img src="@product.ImagenUrl" width="60" height="70"/></td>
+                    <td>
+                        @foreach (var variant in product.Variaciones)
+                        {
+                            <li>@variant.Color - $@variant.Precio</li>
+                        }
+                    </td>
+                    <td>
+                        <div class="d-flex justify-content-start">
+                            @if (canEditAndCreateProduct)
+                            {
+                                <button class="btn btn-warning me-2" @onclick="() => EditProduct(product.Id)">Editar</button>
+                            }
+                            @if (isAdmin)
+                            {
+                                <button class="btn btn-danger" @onclick="() => DeleteProduct(product.Id)">Eliminar</button>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Product> productList;
+    private bool canEditAndCreateProduct;
+    private bool isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        canEditAndCreateProduct = await AuthService.IsInRoleAsync("Admin") || await AuthService.IsInRoleAsync("Seller");
+        isAdmin = await AuthService.IsInRoleAsync("Admin");
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        productList = await ProductService.GetAllProductsAsync();
+    }
+
+    private void CreateProduct()
+    {
+        Navigation.NavigateTo("/products/create");
+    }
+
+    private void EditProduct(int productId)
+    {
+        Navigation.NavigateTo($"/products/edit/{productId}");
+    }
+
+    private async Task DeleteProduct(int productId)
+    {
+        await ProductService.DeleteProductAsync(productId);
+        await LoadProducts();
+    }
+}
